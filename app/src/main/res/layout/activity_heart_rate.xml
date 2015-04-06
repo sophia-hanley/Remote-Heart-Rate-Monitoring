@@ -9,35 +9,45 @@
     android:orientation="vertical"
     tools:context="com.example.mrmac.remoteheartratemonitoring.heartRate">
 
-    <TextureView
-        android:id="@+id/videoView"
-        android:layout_below="@+id/words"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/but"/>
-    <View
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="30dp"
-        android:layout_marginRight="30dp"
-        android:layout_marginTop="70dp"
-        android:layout_marginBottom="380dp"
-        android:layout_weight="1"
-        android:background="@drawable/myshape" />
+    <org.opencv.android.JavaCameraView
+        android:layout_width="720dp"
+        android:layout_height="480dp"
+        android:visibility="gone"
+        android:id="@+id/OpenCVView"
+        opencv:show_fps="false"
+        opencv:camera_id="any"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"/>
+
+
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:layout_alignParentBottom="true"
-        android:id="@+id/but"
-        android:onClick="click"/>
-    <TextView
+        android:text="START"
+        android:id="@+id/start"
+        android:layout_below="@+id/OpenCVView"
+        android:layout_alignParentLeft="true"/>
+    <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true"
-        android:id="@+id/words"
-        android:text="Place forehead in box"/>
+        android:text="RESET"
+        android:id="@+id/reset"
+        android:layout_below="@+id/start"/>
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="COMPUTE"
+        android:id="@+id/compute"
+        android:layout_below="@+id/OpenCVView"
+        android:layout_alignParentRight="true"/>
 
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="STOP"
+        android:id="@+id/stop"
+        android:layout_below="@+id/compute"
+        android:layout_alignParentRight="true"/>
 
 </RelativeLayout>

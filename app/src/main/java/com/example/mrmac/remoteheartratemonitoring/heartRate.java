@@ -1,10 +1,12 @@
 package com.example.mrmac.remoteheartratemonitoring;
 
+import android.os.Environment;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.Surface;
 import android.view.WindowManager;
 import android.widget.VideoView;
 import android.widget.MediaController;
@@ -15,10 +17,14 @@ import android.graphics.Rect;
 
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import java.util.List;
 
 import java.util.List;
 import java.io.File;
+import java.io.File.*;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
@@ -66,13 +72,336 @@ import android.widget.Toast;
 import android.widget.FrameLayout;
 import android.view.View;
 import android.graphics.Color;
+import android.content.pm.ActivityInfo;
+import android.widget.ToggleButton;
 
 
 
+public class heartRate extends Activity implements CameraBridgeViewBase.CvCameraViewListener2 {
+    private CameraBridgeViewBase mOpenCvCameraView;
+    int option = 0;
+
+    float[] rsigraw;
+    float[] gsigraw;
+    float[] bsigraw;
+    int NMAX = 1024;
+    int N = 0;
+    ByteBuffer rsig;
+    ByteBuffer gsig;
+    ByteBuffer bsig;
+
+
+    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS:
+                {
+//                    Log.i(TAG, "OpenCV loaded successfully");
+                    mOpenCvCameraView.enableView();
+//                    current_frame = new Mat();
+                } break;
+                default:
+                {
+                    super.onManagerConnected(status);
+                } break;
+            }
+        }
+    };
+
+    @Override
+    public void onResume()
+    {
+        super.onResume();
+        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_3, this, mLoaderCallback);
+    }
 
 
 
-public class heartRate extends ActionBarActivity {
+    private View.OnClickListener startbtnlistener = new View.OnClickListener(){
+
+        public void onClick(View v){
+            // start filling buffer
+            option = 1;
+
+        }
+
+    };
+    private View.OnClickListener stopbtnlistener = new View.OnClickListener(){
+
+        public void onClick(View v){
+            // stop filling buffer
+            option = 2;
+
+        }
+
+    };
+    private View.OnClickListener resetbtnlistener = new View.OnClickListener(){
+
+        public void onClick(View v){
+
+            // reset buffer
+            option = 3;
+
+        }
+
+    };
+    private View.OnClickListener computebtnlistener = new View.OnClickListener(){
+
+        public void onClick(View v){
+            rsig = ByteBuffer.allocateDirect(4 * NMAX); // allocates number of bytes
+            gsig = ByteBuffer.allocateDirect(4 * NMAX); // allocates number of bytes
+            bsig = ByteBuffer.allocateDirect(4 * NMAX); // allocates number of bytes
+            rsig.order(ByteOrder.nativeOrder());    // use the device hardware's native byte order
+            gsig.order(ByteOrder.nativeOrder());    // use the device hardware's native byte order
+            bsig.order(ByteOrder.nativeOrder());    // use the device hardware's native byte order
+
+            FloatBuffer arg0 = rsig.asFloatBuffer();  // create a floating point buffer from the ByteBuffer
+            arg0.put(rsigraw);    // add the coordinates to the FloatBuffer
+            arg0.position(0);      // set the buffer to read the first coordinate
+
+            FloatBuffer arg1 = gsig.asFloatBuffer();  // create a floating point buffer from the ByteBuffer
+            arg1.put(gsigraw);    // add the coordinates to the FloatBuffer
+            arg1.position(0);      // set the buffer to read the first coordinate
+
+            FloatBuffer arg2 = bsig.asFloatBuffer();  // create a floating point buffer from the ByteBuffer
+            arg2.put(bsigraw);    // add the coordinates to the FloatBuffer
+            arg2.position(0);      // set the buffer to read the first coordinate
+
+            //###############################
+            // call extractHR in c++
+            //###############################
+        }
+
+    };
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+//        Log.i(TAG, "called onCreate");
+        super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        setContentView(R.layout.activity_heart_rate);
+        mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.OpenCVView);
+        mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
+
+        mOpenCvCameraView.setCvCameraViewListener(this);
+
+        Button stopbtn = (Button)findViewById(R.id.stop);
+        Button startbtn = (Button)findViewById(R.id.start);
+        Button resetbtn = (Button)findViewById(R.id.reset);
+        Button computebtn = (Button)findViewById(R.id.compute);
+
+        stopbtn.setOnClickListener(stopbtnlistener);
+        startbtn.setOnClickListener(startbtnlistener);
+        resetbtn.setOnClickListener(resetbtnlistener);
+        computebtn.setOnClickListener(computebtnlistener);
+    }
+
+    @Override
+    public void onPause()
+    {
+        super.onPause();
+        if (mOpenCvCameraView != null)
+            mOpenCvCameraView.disableView();
+    }
+
+    public void onDestroy() {
+        super.onDestroy();
+        if (mOpenCvCameraView != null)
+            mOpenCvCameraView.disableView();
+    }
+
+    public void onCameraViewStarted(int width, int height) {
+    }
+
+    public void onCameraViewStopped() {
+    }
+
+    public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
+
+        // Do signal processing here.
+        Mat current_frame = inputFrame.rgba();
+
+
+        //#################################
+        // handle button cases
+        //#################################
+        // superimpose rectangle on screen
+        //#################################
+
+
+//        if (option == 2){
+//            // 1 -> blur
+////            current_frame = inputFrame.rgba();
+//            org.opencv.core.Size s = new Size(10,10);
+//            Imgproc.blur(current_frame, current_frame, s);
+//
+//        } else if (option == 1){
+////            current_frame = inputFrame.gray();
+//            Imgproc.cvtColor(current_frame,current_frame,Imgproc.COLOR_RGB2GRAY);
+//            Imgproc.Canny(current_frame,current_frame,100,300);
+//            Imgproc.cvtColor(current_frame,current_frame,Imgproc.COLOR_GRAY2RGB);
+//
+//        } else {
+//            // 0 -> normal
+//            current_frame = inputFrame.rgba();
+//        }
+        return current_frame;
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+//        getMenuInflater().inflate(R.menu.menu_vid, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+
+/*
+public class heartRate extends Activity implements SurfaceHolder.Callback{
+    private SurfaceView mSurfaceView;
+    private SurfaceHolder mHolder;
+    private ToggleButton mTB;
+    private MediaRecorder mR;
+    private Camera mCamera;
+    private boolean mInitSuccesful;
+
+
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_heart_rate);
+
+        // we shall take the video in landscape orientation
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
+        mSurfaceView = (SurfaceView) findViewById(R.id.videoView);
+        mHolder = mSurfaceView.getHolder();
+        mHolder.addCallback(this);
+        mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+
+        mTB = (ToggleButton) findViewById(R.id.but);
+        mTB.setOnClickListener(new OnClickListener() {
+            @Override
+            // toggle video recording
+            public void onClick(View v) {
+                if (((ToggleButton) v).isChecked()){
+                    try {
+                        initRecorder(mHolder.getSurface());
+                        mR.start();
+                    }catch(IOException e){
+                        e.printStackTrace();
+                    }
+
+                }
+                else {
+                    mR.stop();
+                    mR.reset();
+                    try {
+                        initRecorder(mHolder.getSurface());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+    }
+
+
+    private void initRecorder(Surface surface) throws IOException {
+        // It is very important to unlock the camera before doing setCamera
+        // or it will results in a black preview
+
+
+
+        mR = new MediaRecorder();
+
+
+        if(mCamera == null) {
+            mCamera = Camera.open(1);
+            mCamera.setPreviewDisplay(mHolder);
+            mCamera.startPreview();
+            mCamera.unlock();
+        }
+
+
+        mR.setCamera(mCamera);
+
+        mR.setPreviewDisplay(surface);
+        mR.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+        mR.setOutputFormat(MediaRecorder.OutputFormat.DEFAULT);
+        File file = new File(Environment.getExternalStorageDirectory(), "name_it_some_shit");
+
+        mR.setOutputFile(file.getAbsolutePath());
+
+        // No limit. Don't forget to check the space on disk.
+        //mR.setMaxDuration(600);
+        //mR.setVideoFrameRate(15);
+
+        mR.setVideoEncoder(MediaRecorder.VideoEncoder.DEFAULT);
+
+        try {
+            mR.prepare();
+        } catch (IllegalStateException e) {
+            // This is thrown if the previous calls are not called with the
+            // proper order
+            e.printStackTrace();
+        }
+
+        mInitSuccesful = true;
+    }
+
+    @Override
+    public void surfaceCreated(SurfaceHolder holder) {
+        try {
+            if(!mInitSuccesful)
+                initRecorder(mHolder.getSurface());
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+
+    }
+
+    private void shutdown() {
+        // Release MediaRecorder and especially the Camera as it's a shared
+        // object that can be used by other applications
+        mR.reset();
+        mR.release();
+        mCamera.release();
+
+        // once the objects have been released they can't be reused
+        mR = null;
+        mCamera = null;
+    }
+
+    @Override
+    public void surfaceDestroyed(SurfaceHolder holder) {
+        shutdown();
+    }
+
+*/
+/*public class heartRate extends ActionBarActivity {
 
     private Camera mCamera;
     private TextureView mPreview;
@@ -89,7 +418,7 @@ public class heartRate extends ActionBarActivity {
 
         mPreview = (TextureView) findViewById(R.id.videoView);
         captureButton = (Button) findViewById(R.id.but);
-        setCaptureButtonText("Record"); 
+        setCaptureButtonText("Record");
 
     }
 
@@ -99,7 +428,6 @@ public class heartRate extends ActionBarActivity {
      * it prepares the {@link android.media.MediaRecorder} and starts recording.
      *
      * @param view the view generating the event.
-     */
     public void click(View view) {
         // Do stuff
     } {
@@ -229,7 +557,7 @@ public class heartRate extends ActionBarActivity {
     /**
      * Asynchronous task for preparing the {@link android.media.MediaRecorder} since it's a long blocking
      * operation.
-     */
+
     class MediaPrepareTask extends AsyncTask<Void, Void, Boolean> {
 
         @Override
@@ -263,7 +591,7 @@ public class heartRate extends ActionBarActivity {
 
 }
 
-
+*/
     /*private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
@@ -454,7 +782,7 @@ public class heartRate extends ActionBarActivity {
         Imgproc.resize(mRgbaT, mRgbaT, mRgba.size());
         return mRgbaT; }*/
 
-   /* public class MyCameraSurfaceView extends SurfaceView implements SurfaceHolder.Callback {
+ /*   public class MyCameraSurfaceView extends SurfaceView implements SurfaceHolder.Callback {
 
         private SurfaceHolder mHolder;
         private Camera mCamera;
@@ -478,7 +806,7 @@ public class heartRate extends ActionBarActivity {
             // If your preview can change or rotate, take care of those events here.
             // Make sure to stop the preview before resizing or reformatting it.
 
-            if (mHolder.getSurface() == null){
+            if (mHolder.getSurface() == null) {
                 // preview surface does not exist
                 return;
             }
@@ -486,7 +814,7 @@ public class heartRate extends ActionBarActivity {
             // stop preview before making changes
             try {
                 mCamera.stopPreview();
-            } catch (Exception e){
+            } catch (Exception e) {
                 // ignore: tried to stop a non-existent preview
             }
 
@@ -497,7 +825,7 @@ public class heartRate extends ActionBarActivity {
                 mCamera.setPreviewDisplay(mHolder);
                 mCamera.startPreview();
 
-            } catch (Exception e){
+            } catch (Exception e) {
             }
         }
 
@@ -517,7 +845,7 @@ public class heartRate extends ActionBarActivity {
             // TODO Auto-generated method stub
 
         }
-
+    }
 
 /*        private void initializeOpenCVDependencies() {
 
@@ -622,3 +950,4 @@ public class heartRate extends ActionBarActivity {
     }
 }
 */
+}
