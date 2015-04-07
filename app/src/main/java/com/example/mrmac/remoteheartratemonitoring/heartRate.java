@@ -89,6 +89,7 @@ public class heartRate extends Activity implements CameraBridgeViewBase.CvCamera
     ByteBuffer rsig;
     ByteBuffer gsig;
     ByteBuffer bsig;
+    boolean ready=false;
 
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
@@ -149,24 +150,26 @@ public class heartRate extends Activity implements CameraBridgeViewBase.CvCamera
     private View.OnClickListener computebtnlistener = new View.OnClickListener(){
 
         public void onClick(View v){
-            rsig = ByteBuffer.allocateDirect(4 * NMAX); // allocates number of bytes
-            gsig = ByteBuffer.allocateDirect(4 * NMAX); // allocates number of bytes
-            bsig = ByteBuffer.allocateDirect(4 * NMAX); // allocates number of bytes
-            rsig.order(ByteOrder.nativeOrder());    // use the device hardware's native byte order
-            gsig.order(ByteOrder.nativeOrder());    // use the device hardware's native byte order
-            bsig.order(ByteOrder.nativeOrder());    // use the device hardware's native byte order
+            if(ready) {
+                rsig = ByteBuffer.allocateDirect(4 * NMAX); // allocates number of bytes
+                gsig = ByteBuffer.allocateDirect(4 * NMAX); // allocates number of bytes
+                bsig = ByteBuffer.allocateDirect(4 * NMAX); // allocates number of bytes
+                rsig.order(ByteOrder.nativeOrder());    // use the device hardware's native byte order
+                gsig.order(ByteOrder.nativeOrder());    // use the device hardware's native byte order
+                bsig.order(ByteOrder.nativeOrder());    // use the device hardware's native byte order
 
-            FloatBuffer arg0 = rsig.asFloatBuffer();  // create a floating point buffer from the ByteBuffer
-            arg0.put(rsigraw);    // add the coordinates to the FloatBuffer
-            arg0.position(0);      // set the buffer to read the first coordinate
+                FloatBuffer arg0 = rsig.asFloatBuffer();  // create a floating point buffer from the ByteBuffer
+                arg0.put(rsigraw);    // add the coordinates to the FloatBuffer
+                arg0.position(0);      // set the buffer to read the first coordinate
 
-            FloatBuffer arg1 = gsig.asFloatBuffer();  // create a floating point buffer from the ByteBuffer
-            arg1.put(gsigraw);    // add the coordinates to the FloatBuffer
-            arg1.position(0);      // set the buffer to read the first coordinate
+                FloatBuffer arg1 = gsig.asFloatBuffer();  // create a floating point buffer from the ByteBuffer
+                arg1.put(gsigraw);    // add the coordinates to the FloatBuffer
+                arg1.position(0);      // set the buffer to read the first coordinate
 
-            FloatBuffer arg2 = bsig.asFloatBuffer();  // create a floating point buffer from the ByteBuffer
-            arg2.put(bsigraw);    // add the coordinates to the FloatBuffer
-            arg2.position(0);      // set the buffer to read the first coordinate
+                FloatBuffer arg2 = bsig.asFloatBuffer();  // create a floating point buffer from the ByteBuffer
+                arg2.put(bsigraw);    // add the coordinates to the FloatBuffer
+                arg2.position(0);      // set the buffer to read the first coordinate
+            }
 
             //###############################
             // call extractHR in c++
@@ -220,7 +223,35 @@ public class heartRate extends Activity implements CameraBridgeViewBase.CvCamera
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
 
         // Do signal processing here.
+
+
         Mat current_frame = inputFrame.rgba();
+        if(option==1){
+            int col=current_frame.cols();
+            int row=current_frame.rows();
+            ready=false;
+            for(int i=0; i<col; i++) {
+                for (int j = 0; j < row; j++) {
+                    int r=(int)current_frame.get(i, j)[0];
+                    int g=(int)current_frame.get(i, j)[0];
+                    int b=(int)current_frame.get(i, j)[0];
+                    rsigraw[N]=r>>24;
+                    gsigraw[N]=g>>16&0xFF;
+                    bsigraw[N]=b>>8&0xFF;
+                    N++;
+                }
+            }
+        }
+        else if(option==2){
+            N=0;
+            ready=true;
+
+        }
+        else if(option==3){
+            ready=false;
+            N=0;
+
+        }
 
 
         //#################################
